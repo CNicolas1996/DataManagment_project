@@ -100,7 +100,7 @@ class DataProcessor:
         except Exception as e:
             print(f"Error durante la conversión a UTF-8: {str(e)}")
 
-    import pandas as pd
+
 
     def read_csv_summary(self, chunk_size=None, usecols=None, skiprows=None, sep=','):
         try:
@@ -124,8 +124,6 @@ class DataProcessor:
 
             else:
                 chunks_info = []  # Lista para almacenar información de los chunks
-                problematic_lines = []  # Lista para almacenar líneas problemáticas
-
                 chunks = pd.read_csv(file_path_to_read, chunksize=chunk_size, usecols=usecols, skiprows=skiprows,
                                      sep=sep, encoding='utf-8', on_bad_lines='warn')
 
@@ -137,32 +135,48 @@ class DataProcessor:
                         "Número de columnas": len(chunk.columns),
                     }
                     chunks_info.append(chunk_info)
+                if chunk.shape[1] != self.column_names:
+                    print(f"Error en la línea {i + 1}: número de columnas incorrecto.")
+                    print(chunk)
 
-                    # Detecta y almacena líneas con un número incorrecto de campos
-                    for j, line in enumerate(chunk.iterrows()):
-                        if len(line[1]) != len(chunk.columns):
-                            problematic_lines.append({
-                                "Chunk": i + 1,
-                                "Número de línea": j + 1,
-                                "Número de campos": len(line[1]),
-                                "Campos": line[1].tolist(),
-                            })
-
-                # Convierte la lista de información de chunks y líneas problemáticas a DataFrames
+                # Convierte la lista de información de chunks a DataFrame
                 chunks_summary = pd.DataFrame(chunks_info)
-                problematic_lines_df = pd.DataFrame(problematic_lines)
-
                 print(chunks_summary)
-                print(problematic_lines_df)
 
                 # Reinicia la lectura para procesar los chunks posteriormente
                 chunks = pd.read_csv(file_path_to_read, chunksize=chunk_size, usecols=usecols, skiprows=skiprows,
                                      sep=sep, encoding='utf-8', on_bad_lines='warn')
 
-                return chunks_summary, problematic_lines_df, chunks  # Devuelve el resumen de chunks, líneas problemáticas y los chunks para su procesamiento posterior
+                return chunks_summary, None, chunks  # Devuelve el resumen de chunks y los chunks para su procesamiento posterior
 
-        except Exception as e:
-            print(f"Error al leer el archivo CSV: {str(e)}")
+        except pd.errors.ParserError as pe:
+            print(f"Error al leer el archivo CSV: {str(pe)}")
+
+            # Intenta leer el archivo reemplazando el error_bad_lines con False para llenar los campos faltantes con NaN
+            chunks = pd.read_csv(file_path_to_read, chunksize=chunk_size, usecols=usecols, skiprows=skiprows,
+                                 sep=sep, encoding='utf-8', on_bad_lines='warn', error_bad_lines=False)
+
+            chunks_info = []  # Lista para almacenar información de los chunks
+            for i, chunk in enumerate(chunks):
+                # Procesa cada chunk
+                chunk_info = {
+                    "Chunk": i + 1,
+                    "Número de filas": len(chunk),
+                    "Número de columnas": len(chunk.columns),
+                }
+                chunks_info.append(chunk_info)
+            if chunk.shape[1] != self.column_names:
+                print(f"Error en la línea {i + 1}: número de columnas incorrecto.")
+                print(chunk)
+
+            # Convierte la lista de información de chunks a DataFrame
+            chunks_summary = pd.DataFrame(chunks_info)
+            print(chunks_summary)
+
+            return chunks_summary, None, chunks  # Devuelve el resumen de chunks y los chunks para su procesamiento posterior
+
+
+# Devuelve el resumen de chunks y los chunks para su procesamiento posterior
 
 
 '''Ejemplo de uso y pruebitas'''
@@ -172,9 +186,14 @@ if __name__ == "__main__":
     csv_path = r"C:\Repositorios\DataManagment_project\TestData\BASE_DE_DATOS_DE_EMPRESAS_Y_O_ENTIDADES_ACTIVAS_-_JURISDICCI_N_C_MARA_DE_COMERCIO_DE_IBAGU__-_CORTE_A_31_DE_AGOSTO_DE_2023.csv"
 
     data_processor = DataProcessor(csv_path)
-    chunks_summary, _, chunks = data_processor.read_csv_summary(chunk_size=1000)
+    chunks_summary, _, chunks = data_processor.read_csv_summary(chunk_size=2000)
 
 
+    # Iterar sobre los chunks para acceder a ellos:
+    for i, chunk in enumerate(chunks):
+        if i == 1:  # Acceder al segundo chunk (índice 1)
+            print(chunk.info())
+            break  # Detener la iteración si solo deseas ver el segundo chunk
     # Imprimir el DataFrame con la descripción de los chunks
 
 
