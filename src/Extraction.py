@@ -53,6 +53,10 @@ class DataProcessor:
         self.chunks_description = None
 
     def detect_file_info(self, sample_size=1024):
+
+        """
+        Detecta la información del archivo CSV, incluyendo encoding y estimación del número de filas.
+        """
         try:
             # Obtener el tamaño total del archivo en bytes
             file_size = os.path.getsize(self.file_path)
@@ -87,6 +91,10 @@ class DataProcessor:
             print(f"Error al detectar información del archivo CSV: {str(e)}")
 
     def convert_to_utf8(self):
+
+        """
+        Convierte el archivo a formato UTF-8.
+        """
         try:
             if self.detected_encoding.lower() != 'utf-8':
                 # Convertir el archivo a utf-8 usando codecs
@@ -99,10 +107,14 @@ class DataProcessor:
                 print("El archivo ya está en formato UTF-8. No es necesaria la conversión.")
         except Exception as e:
             print(f"Error durante la conversión a UTF-8: {str(e)}")
-
+            print(f"Archivo con error: {self.file_path}")
 
 
     def read_csv_summary(self, chunk_size=None, usecols=None, skiprows=None, sep=','):
+
+        """
+        Lee el archivo CSV en chunks y devuelve un resumen y los chunks para procesamiento posterior.
+        """
         try:
             if self.detected_encoding is None:
                 self.detect_file_info()
@@ -137,17 +149,17 @@ class DataProcessor:
                     chunks_info.append(chunk_info)
                 if chunk.shape[1] != self.column_names:
                     print(f"Error en la línea {i + 1}: número de columnas incorrecto.")
-                    print(chunk)
+
 
                 # Convierte la lista de información de chunks a DataFrame
                 chunks_summary = pd.DataFrame(chunks_info)
-                print(chunks_summary)
+
 
                 # Reinicia la lectura para procesar los chunks posteriormente
                 chunks = pd.read_csv(file_path_to_read, chunksize=chunk_size, usecols=usecols, skiprows=skiprows,
                                      sep=sep, encoding='utf-8', on_bad_lines='warn')
 
-                return chunks_summary, None, chunks  # Devuelve el resumen de chunks y los chunks para su procesamiento posterior
+                return chunks_summary, None, chunks  # Devuelve el resumen de chunks y los chunks para su procesamiento posterior :)
 
         except pd.errors.ParserError as pe:
             print(f"Error al leer el archivo CSV: {str(pe)}")
@@ -167,38 +179,28 @@ class DataProcessor:
                 chunks_info.append(chunk_info)
             if chunk.shape[1] != self.column_names:
                 print(f"Error en la línea {i + 1}: número de columnas incorrecto.")
-                print(chunk)
+
 
             # Convierte la lista de información de chunks a DataFrame
             chunks_summary = pd.DataFrame(chunks_info)
-            print(chunks_summary)
 
-            return chunks_summary, None, chunks  # Devuelve el resumen de chunks y los chunks para su procesamiento posterior
-
-
-# Devuelve el resumen de chunks y los chunks para su procesamiento posterior
+            return chunks_summary, None, chunks
 
 
-'''Ejemplo de uso y pruebitas'''
 
-# Ejemplo de uso
 if __name__ == "__main__":
     csv_path = r"C:\Repositorios\DataManagment_project\TestData\BASE_DE_DATOS_DE_EMPRESAS_Y_O_ENTIDADES_ACTIVAS_-_JURISDICCI_N_C_MARA_DE_COMERCIO_DE_IBAGU__-_CORTE_A_31_DE_AGOSTO_DE_2023.csv"
 
     data_processor = DataProcessor(csv_path)
-    chunks_summary, _, chunks = data_processor.read_csv_summary(chunk_size=2000)
+    chunks_summary, _, chunks = data_processor.read_csv_summary(chunk_size=3000)
 
-
-    # Iterar sobre los chunks para acceder a ellos:
-    for i, chunk in enumerate(chunks):
-        if i == 1:  # Acceder al segundo chunk (índice 1)
-            print(chunk.info())
-            break  # Detener la iteración si solo deseas ver el segundo chunk
-    # Imprimir el DataFrame con la descripción de los chunks
-
-
-
-
+for i, chunk in enumerate(chunks):
+    print("Resumen de los chunks:")
+    print(chunks_summary)
+    concatenated_data = pd.concat(chunks, ignore_index=True)
+    print("Concatenación de todos los chunks: \n\n")
+    print(f"Info de los chunks concatenados: \n\n {concatenated_data.info()}")
+    print(concatenated_data.sample(30))
 
 
 
