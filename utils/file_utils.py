@@ -1,11 +1,34 @@
-#alternativa 1, herencia
+import abc
+import json
+import os
+
+import chardet as chardet
+import pandas as pd
+
+
 class FileProcessingAbstract(object):
 
-    __file_format = ""
+    default_file_format = ""
+    file_objects = []
 
     def __init__(self, file_path: str):
-        self.__file_path = file_path
-        self.file_format = self.__file_format
+        self.file_path = file_path
+        self.__file_format = self.default_file_format
+        self.__metadata = {}
+        self.__file_stream = FileProcessingAbstract.open_file(self.file_path, "rb")
+        self.__file_df = None
+        self.extract_data_from_file()
+
+    def __new__(cls, *args, **kwargs):
+        instance = super(FileProcessingAbstract, cls).__new__(cls)
+        cls.file_objects.append(instance)
+        return instance
+
+    def __del__(self):
+        self.file_objects.pop(self.file_objects.index(self))
+
+    def __str__(self):
+        return json.dumps(self.metadata, indent=2)
 
     @property
     def file_format(self):
@@ -13,83 +36,101 @@ class FileProcessingAbstract(object):
 
     @file_format.setter
     def file_format(self, val):
-        self.__file_format = val
+        if self.file_format == "" or self.file_format is None:
+            self.__file_format = val
+        else:
+            raise Exception("The file format is immutable")
 
     @property
-    def file_path(self):
-        return self.__file_path
+    def metadata(self):
+        return self.__metadata
+
+    @metadata.setter
+    def metadata(self, val):
+        if self.metadata == {} or self.metadata is None:
+            self.__metadata = val
+        else:
+            raise Exception("The file metadata is immutable")
+
+    @property
+    def file_stream(self):
+        return self.__file_stream
+
+    @file_stream.setter
+    def file_stream(self, val):
+        if self.file_stream is None:
+            self.__file_stream = val
+        else:
+            raise Exception("The file stream is immutable")
+
+    @property
+    def file_df(self):
+        return self.__file_df
+
+    @file_df.setter
+    def file_df(self, val):
+        if self.file_df is None:
+            self.__file_df = val
+        else:
+            raise Exception("The file stream is immutable")
+
+    @file_stream.deleter
+    def file_stream(self):
+        self.file_stream.close()
+
+    @abc.abstractmethod
+    def extract_data_from_file(self, sample_size=1024):
+        """
+            sets a dictionary in the instance variable "file_metadata"
+        :param sample_size: int
+        """
+        metadata = {}
+        self.metadata = metadata
+        raise Exception("Must be implemented in every subclass")
+
+    @staticmethod
+    def open_file(file_path: str, opening_mode: str):
+        """
+            create a stream from a file
+        :param opening_mode:
+        :param file_path:
+        :param path:
+        :return: io.stream
+        """
+        return open(file_path, opening_mode)
 
 
-class CSVProcessing1(FileProcessingAbstract):
+class CSVProcessing(FileProcessingAbstract):
 
-    __file_format = "csv"
+    default_file_format = "csv"
 
-    def __init__(self, file_path):
-        super().__init__(file_path)
-        self.file_format = self.__file_format
-    # agregar aqui todos metodos para manejar csvs
-
-#alternativa 2, uso de meta clases
-class FileProcessingUtilsMeta(type):
-    def __new__(mcs, name, bases, dictionary):
-        supported_formats = ["csv", "xml", "json"]
-        class_format = name.split("Processing")[0].lower()
-        if class_format not in supported_formats:
-            raise Exception("The class you are implementing is not yet supported")
-        dictionary.setdefault("file_format", name.split("Processing")[0].lower())
-        dictionary.setdefault("get_file_format", lambda self: self.file_format)
-        dictionary.setdefault("file_path", None)
-        dictionary.setdefault("get_file_path", lambda self: self.file_path)
-        obj = super().__new__(mcs, name, bases, dictionary)
-        return obj
-
-
-class CSVProcessing2(metaclass=FileProcessingUtilsMeta):
-    # ejemplo de un clase creada a partir de la metaclase
     def __init__(self, file_path: str):
-        self.file_path = file_path
+        super().__init__(file_path)
 
-    # agregar aqui todos metodos para manejar csvs
+    def extract_data_from_file(self, sample_size=1024):
+        try:
+            file_size = os.path.getsize(self.file_path)
+            sample = self.file_stream.read(sample_size)
+            result = chardet.detect(sample)
+            detected_encoding = result['encoding']
+            detected_confidence = result['confidence']
+            self.file_df = pd.read_csv(self.file_path, encoding=detected_encoding)
+            total_columns = self.file_df.shape[1]
+            column_names = self.file_df.columns.tolist()
+            converted_file_path = self.file_path.replace('.csv', '_converted_utf-8.csv')
+            self.metadata = {
+                "file_size": file_size,
+                "detected_encoding": detected_encoding,
+                "detected_confidence": detected_confidence,
+                "total_columns": total_columns,
+                "column_names": column_names,
+                "converted_file_path": converted_file_path
 
-
-#alternativa 3, uso del patron builder - usar si empieza a notar que las clases que manejan los archivos empiezan a pedir
-# muchos parametros en el __init__, o que el __init__ en si mismo empieza a crecer mucho
-
-class FileProcessingDirector:
-
-    __builder = None
-
-    def __init__(self, file_path):
-        self.__file_path = file_path
-
-    def set_builder(self, builder):
-        self.__builder = builder()
-        self.__class_To_build = FileProcessingAbstract
-        return self
-
-    def make_file_processing_obj(self):
-        file_obj = self.__class_To_build(self.__file_path)
-        file_obj.file_format = self.__builder.get_file_format()
-        return file_obj
-
-
-class CSV_Builder:
-    __FILE_FORMAT = "csv"
-
-    def get_file_format(self):
-        return self.__FILE_FORMAT
-
+            }
+        except Exception as e:
+            print(f"Error al detectar información del archivo CSV: {str(e)}")
 
 
 if __name__ == "__main__":
-    csv_obj_1 = CSVProcessing1("path1")
-    csv_obj_2 = CSVProcessing2("path2")
-    csv_obj_3 = FileProcessingDirector("path3").set_builder(CSV_Builder).make_file_processing_obj()
-    print(csv_obj_1.file_path)
-    print(csv_obj_1.file_format)
-    print("")
-    print(csv_obj_2.file_path)
-    print(csv_obj_2.file_format)
-    print("")
-    print(csv_obj_3.file_path)
-    print(csv_obj_3.file_format)
+    csvObj = CSVProcessing(r"path/to/csv")
+    print(csvObj)
