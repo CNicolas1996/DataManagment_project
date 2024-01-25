@@ -133,5 +133,5 @@ class CSVProcessing(FileProcessingAbstract):
 
 
 if __name__ == "__main__":
-    csvObj = CSVProcessing(r"C:\Users\Juan Sebastian\OneDrive\Desktop\Programming\DataScienceProject\DataManagment_project\TestData\organizations-500000.csv")
+    csvObj = CSVProcessing(r"path\to\csv")
     print(csvObj)
