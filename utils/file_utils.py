@@ -127,10 +127,11 @@ class CSVProcessing(FileProcessingAbstract):
                 "converted_file_path": converted_file_path
 
             }
+            del self.file_stream
         except Exception as e:
             print(f"Error al detectar información del archivo CSV: {str(e)}")
 
 
 if __name__ == "__main__":
-    csvObj = CSVProcessing(r"path/to/csv")
+    csvObj = CSVProcessing(r"C:\Users\Juan Sebastian\OneDrive\Desktop\Programming\DataScienceProject\DataManagment_project\TestData\organizations-500000.csv")
     print(csvObj)
