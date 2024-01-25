@@ -40,6 +40,8 @@ class ChunkedDataFrame:
         }
 
         return pd.DataFrame(chunks_description)
+
+
 class DataProcessor:
     def __init__(self, file_path):
         self.file_path = file_path
@@ -53,7 +55,6 @@ class DataProcessor:
         self.chunks_description = None
 
     def detect_file_info(self, sample_size=1024):
-
         """
         Detecta la información del archivo CSV, incluyendo encoding y estimación del número de filas.
         """
