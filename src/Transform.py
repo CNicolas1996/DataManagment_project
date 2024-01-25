@@ -2,7 +2,6 @@ import pandas as pd
 import missingno as msno
 import matplotlib.pyplot as plt
 import seaborn as sns
-from IPython.display import display
 
 class DataTransformer:
     def __init__(self, data):
