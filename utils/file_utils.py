@@ -72,7 +72,7 @@ class FileProcessingAbstract(object):
         if self.file_df is None:
             self.__file_df = val
         else:
-            raise Exception("The file stream is immutable")
+            raise Exception("The file data frame is immutable")
 
     @file_stream.deleter
     def file_stream(self):
